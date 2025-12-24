@@ -1,6 +1,6 @@
 # nf-sequenoscope
 
-The Nextflow wrapper for this pipeline serves as a critical tool for bioinformatics workflows, especially in the context of ONT adaptive-sampling sequencing. The adaptive sampling technique, where sequencing efforts are dynamically focused on target DNA or RNA molecules, generates unique challenges in data management and interpretation. This pipeline addresses these through its three specialized modules:
+This Nextflow wrapper extends Sequenoscope for high-throughput environments, enabling the parallel processing of multiple sequencing runs at scale. While adaptive sampling creates unique challenges in data management, this pipeline automates the orchestration across three specialized modules, ensuring consistent and reproducible interpretation across large-scale datasets. This pipeline addresses these through three specialized modules, using automated logic to detect and trigger the correct execution path based on your specific parameter inputs:
 
 ## Analyze Module
 
