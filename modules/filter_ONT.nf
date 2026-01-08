@@ -7,34 +7,43 @@ process RUN_FILTER_ONT {
     conda "bioconda::sequenoscope=1.0.0"
 
     input:
-    tuple val(meta), path(fastq_inputs), path(input_summary), val(reference), val(min_ch), val(max_ch)
+    tuple val(meta), path(fastq_inputs), path(input_summary), val(min_ch), val(max_ch)
 
     output:
-    tuple val(meta), path("filter_results/*.fastq"), val(reference), emit: filtered_results
+    tuple val(meta), path("filter_results/*.fastq"), emit: filtered_results
 
     script:
-    def flags = [
-        'minimum_channel', 'maximum_channel', 'minimum_duration', 
-        'maximum_duration', 'minimum_start_time', 'maximum_start_time',
-        'minimum_q_score', 'maximum_q_score', 'minimum_length', 'maximum_length',
-        'output_prefix', 'classification'
+    def global_flags = [
+    'minimum_duration', 'maximum_duration', 'minimum_start_time', 
+    'maximum_start_time', 'minimum_q_score', 'maximum_q_score', 
+    'minimum_length', 'maximum_length', 'output_prefix', 'classification'
     ]
 
-    def options = flags.collect { flag ->
+    def options = global_flags.collect { flag ->
         if (params[flag] != null && params[flag] != get_default(flag)) {
             return "--${flag} ${params[flag]}"
         }
     }.findAll().join(' ')
 
-    if (params.summarize) options += " --summarize"
-    if (params.force)     options += " --force"
+
+    if (params.force)             options += " --force"
+
+    def final_min = (min_ch != null) ? min_ch : params.minimum_channel // Use provided min_ch in TSV file or default from nextflow.config or CLI
+    def final_max = (max_ch != null) ? max_ch : params.maximum_channel // Use provided max_ch in TSV file or default from nextflow.config or CLI
+
+    def channel_options = ""
+    if (final_min != null) channel_options += "--minimum_channel ${final_min} "
+    if (final_max != null) channel_options += "--maximum_channel ${final_max}"
+
+    println "Running Filter_ONT on ${fastq_inputs.join(' ')} with options:  ${options} ${channel_options}"
 
     """
     sequenoscope filter_ONT \\
         --input_fastq ${fastq_inputs.join(' ')} \\
         --input_summary $input_summary \\
         --output filter_results \\
-        $options
+        ${channel_options} \\
+        ${options}
     """
 }
 

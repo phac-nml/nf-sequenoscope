@@ -1,15 +1,13 @@
 process RUN_ANALYZE {
     tag "${meta.id}"
 
-    publishDir "${params.output}/${meta.id}/analyze", 
-        mode: 'copy', 
-        saveAs: { filename -> file(filename).name }
+    publishDir "${params.output}/${meta.id}/", mode: 'copy', overwrite: true
 
     input:
     tuple val(meta), path(fastqs), path(input_summary), path(reference), val(min_ch), val(max_ch)
 
     output:
-    tuple val(meta), path("analyze_results/*"), emit: analysis_results
+    tuple val(meta), path("analyze_results_${meta.group}"), emit: analysis_results
 
     script:
     // Simply list the parameter names that match the long-form flags
@@ -27,16 +25,29 @@ process RUN_ANALYZE {
     }.findAll().join(' ')
 
     if (params.force) options += " --force"
-    
+
+    def seq_type = (fastqs instanceof List && fastqs.size() == 2) ? 'PE' : params.sequencing_type
+
+    // FIX: Correctly split fastq files for paired-end mode
+    def fastq1 = ""
+    def fastq2 = ""
+
+    if (fastqs instanceof List && fastqs.size() == 2) {
+        fastq1 = fastqs[0]
+        fastq2 = fastqs[1]
+    } else {
+        fastq1 = fastqs instanceof List ? fastqs[0] : fastqs
+    }
     // Handle the sequencing summary and type explicitly as they are often required
     def seq_sum_opt = (input_summary && !input_summary.empty()) ? "--sequencing_summary ${input_summary}" : ""
+    println "[ANALYZE] ID: ${meta.id} | Mode: ${seq_type} | Files: ${fastqs} | Ref: ${reference}"
 
     """
     sequenoscope analyze \\
-        --input_fastq ${fastqs.join(' ')} \\
+        --input_fastq ${fastq1} ${fastq2} \\
         --input_reference ${reference} \\
-        --output analyze_results \\
-        --sequencing_type ${params.sequencing_type} \\
+        --output analyze_results_${meta.group} \\
+        --sequencing_type ${seq_type} \\
         ${seq_sum_opt} \\
         ${options}
     """

@@ -1,15 +1,14 @@
 process RUN_PLOT {
     tag "${meta.id}"
-    // Following your 'analyze' pattern: results go into a specific plot folder
-    publishDir "${params.output}/${meta.id}/plots", 
+
+    publishDir "${params.output}/${meta.id}", 
         mode: 'copy', 
         saveAs: { filename -> file(filename).name }
     
     conda "bioconda::sequenoscope=1.0"
 
     input:
-    // We pass the meta object so we know which sample we are plotting
-    tuple val(meta), path('test_input_dir'), path('ctrl_input_dir')
+    tuple val(meta), path(test_dir), path(ctrl_dir)
 
     output:
     tuple val(meta), path("plot_results/*"), emit: plot_results
@@ -31,11 +30,12 @@ process RUN_PLOT {
     // Handle boolean flags (flags that don't take a value)
     if (params.adaptive_sampling) options += " --adaptive_sampling"
     if (params.force)             options += " --force"
+    println "Running Plot on test_dir ${test_dir} and ctrl_dir ${ctrl_dir} with options: ${options}"
 
     """
     sequenoscope plot \\
-        --test_dir test_input_dir \\
-        --control_dir ctrl_input_dir \\
+        --test_dir ${test_dir} \\
+        --control_dir ${ctrl_dir} \\
         --output_dir plot_results \\
         ${options}
     """
@@ -44,8 +44,7 @@ process RUN_PLOT {
 def get_default_plot(name) {
     def defaults = [
         'output_prefix': 'sample', 
-        'violin_data_percent': 0.1, 
-        'time_bin_unit': 'minutes'
+        'violin_data_percent': 0.1
     ]
     return defaults[name]
 }
