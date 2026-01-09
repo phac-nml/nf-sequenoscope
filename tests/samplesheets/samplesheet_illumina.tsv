@@ -1,0 +1,3 @@
+sample	fastq	fastq2	sequence_summary_file	reference_file	min_ch	max_ch	group	barcode
+ERR2935805	../data/Illumina/ERR2935805_1_LOG.fastq	../data/Illumina/ERR2935805_2_LOG.fastq		../references/Zymo_cleaned_ref.fasta			test	group1
+ERR2984773	../data/Illumina/ERR2984773_1_EVEN.fastq	../data/Illumina/ERR2984773_2_EVEN.fastq		../references/Zymo_cleaned_ref.fasta			control	group1

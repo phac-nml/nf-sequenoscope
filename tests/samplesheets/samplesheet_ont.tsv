@@ -1,0 +1,5 @@
+sample	fastq	fastq2	sequence_summary_file	reference_file	min_ch	max_ch	group	barcode
+barcode1_test	../data/ONT/barcode_1_small_2000.fastq		../data/ONT/test_sequencing_summary.txt	../references/Zymo_cleaned_ref.fasta 	1	256	test	barcode1
+barcode1_ctrl	../data/ONT/barcode_1_small_2000.fastq		../data/ONT/test_sequencing_summary.txt	../references/Zymo_cleaned_ref.fasta 	257	512	control	barcode1
+barcode2_test	../data/ONT/barcode_2_small_2000.fastq		../data/ONT/test_sequencing_summary.txt	../references/Zymo_cleaned_ref.fasta 	1	256	test	barcode2
+barcode2_ctrl	../data/ONT/barcode_2_small_2000.fastq		../data/ONT/test_sequencing_summary.txt	../references/Zymo_cleaned_ref.fasta 	257	512	control	barcode2

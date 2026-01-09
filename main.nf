@@ -223,6 +223,7 @@ def helpMessage() {
 
 
 def get_batch_inputs(tsv) {
+    def tsv_parent = file(tsv).parent // Get the parent directory of the TSV file
     return Channel.fromPath(tsv)
         .splitCsv(sep: '\t', header: true)
         .map { row ->
@@ -232,10 +233,10 @@ def get_batch_inputs(tsv) {
                 barcode: row.barcode ?: row.sample,
                 is_paired: row.fastq2 ? true : false
             ]
-            def fastq_files = row.fastq2 ? [ file(row.fastq.trim()), file(row.fastq2.trim()) ] : [ file(row.fastq.trim()) ]
+            def fastq_files = row.fastq2 ? [ tsv_parent.resolve(row.fastq.trim()), tsv_parent.resolve(row.fastq2.trim()) ] : [ tsv_parent.resolve(row.fastq.trim()) ]
             return [ meta, fastq_files, 
-            row.sequence_summary_file ? file(row.sequence_summary_file.trim()) : [], 
-            row.reference_file ? file(row.reference_file.trim()) : [], 
+            row.sequence_summary_file ? tsv_parent.resolve(row.sequence_summary_file.trim()) : [], 
+            row.reference_file ? tsv_parent.resolve(row.reference_file.trim()) : [], 
             row.min_ch ? row.min_ch.trim().toInteger() : null, 
             row.max_ch ? row.max_ch.trim().toInteger() : null ]
         }
