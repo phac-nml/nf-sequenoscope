@@ -31,6 +31,22 @@ These modules form a pipeline that not only simplifies the data processing workf
 - **Functionality**: Provides advanced visual analytics capabilities, turning complex data into interpretable visual formats.
 - **Importance**: This module is essential for comparing and visualizing data from adaptive sampling experiments, using input from the analyze module to generate plots that highlight key differences and trends in the data.
 
+## Sample Data
+The repository includes test data to showcase and test pipeline performance across ONT and Illumina sequencing technologies and mock community compositions.
+
+### ZymoBIOMICS Microbial Community Standards
+We used the ZymoBIOMICS mock communities to validate mapping and abundance estimation.
+
+- Illumina EVEN/LOG: Data sourced from the [Loman Lab Mock Community project](https://github.com/LomanLab/mockcommunity) (Accessions: ERR2935805 and ERR2984773).
+
+  - EVEN community: Contains 8 bacteria and 2 yeasts at equal genomic concentrations.
+
+  - LOG community: Features the same organisms but with abundances distributed on a logarithmic scale.
+
+- ONT Data: Subsampled Nanopore reads located in tests/data/ONT/ used for testing Adaptive Sampling filtration.
+
+- References: A cleaned Zymo reference FASTA containing all taxa of interest is located in `tests/references/`.
+
 ## Usage
 ### Batch Mode (Recommended)
 The most powerful way to run nf-sequenoscope. This mode reads a Samplesheet (TSV) and automatically determines if it needs to filter, analyze, or plot the data
@@ -48,17 +64,20 @@ The pipeline uses an automated, conditional execution path based on the metadata
 * **Step 3: Comparative Results Visualization**: Finally, the **PLOT** module identifies samples sharing a common `barcode` and pairs them based on the `group` field. This generates comparative plots for **Test** (e.g., Adaptive Sampling) vs. **Control** (e.g., Normal Run) conditions.
 
 
-#### Samplesheet Format
+#### Samplesheet Format 
+The samplesheet is a tab-separated (TSV) file used to drive the Batch Mode of the pipeline. It allows for the parallel processing of multiple runs, automatically determining whether to perform filtering or directly analyze samples ending with the comparative plotting based on the columns/fields provided.
 
-| sample | fastq | fastq2 (Optional) | reference_file | group | barcode | 
-| :--- | :--- | :--- | :--- | :--- | :--- | 
-| sample1 | tests/data/reads1.fastq | | tests/data/ref.fa | test | barcode1 | 
-| sample2 | tests/data/reads1.fastq | | tests/data/ref.fa | control | barcode1 |
+| sample | fastq | fastq2| reference_file | min_ch | max_ch | group | barcode | 
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | 
+| sample1 | tests/data/reads1.fastq | | tests/data/ref.fa | 1 | 256 |test | barcode1 | 
+| sample2 | tests/data/reads1.fastq | | tests/data/ref.fa | 257| 512 |control | barcode1 |
 
 >[!NOTE] 
->Paths in the samplesheet can be relative to the samplesheet file itself or use absolute paths
+> - Paths in the samplesheet can be relative to the samplesheet file itself or use absolute paths
+> - The `min_ch` and `max_ch` represent the specific physical pore ranges on the flow cell. If these and a sequence_summary_file are
+> - To ensure the PLOT module functions correctly, you must use exactly `test` and `control` in the group column. Any other values will result in pipeline failure
 
-### Single-File Mode (Manual)
+### Single-File Mode (Manual mode for debugging)
 You can run individual modules for specific tasks for debugging or point testing purposes. 
 
 #### Running Filter_ONT module only
@@ -91,94 +110,3 @@ nextflow run main.nf plot --test_dir ./results_analyze/test_sample/test_sample_a
 ```
 
 
-nextflow run ../main.nf \
-  filter_ONT \
-  --input_fastq ./fastq/barcode_1.fastq \
-  --input_summary ./fastq/sequencing_summary_FAW13613_a5c2ca27_5cde2a43.txt \
-  --minimum_q_score 1 \
-  --minimum_channel 1 \
-  --maximum_channel  256 \
-  --output_prefix "barcode1_test"
-
-
-
-nextflow run ../main.nf \
-   analyze \
-  --threads 12 \
-  --input_fastq ./sequenoscope_results/barcode1_test/filter_ONT/barcode1_test_filtered_fastq_subset.fastq \
-  --input_reference ./fastq/Zymo_cleaned_ref.fasta \
-  --output_prefix "barcode1_test"
-
-
-  nextflow run ../main.nf \
-  plot \
-  --test_dir ./sequenoscope_results/barcode1_test/analyze/ \
-  --control_dir  ./sequenoscope_results/barcode1_test/analyze/  \
-  --output_prefix "barcode1_test"
-
-
-
-zip -r sequenoscope.zip . -x ".git/*" -x "conda-recipe/*" -x "mock_data/*" -x "./old_version/*" -x "./test_dir/*" -x "sequenoscope.egg-info/*" -x "./nextflow/*" -x "./tests/*" -x ".*"
-
-
-//batch mode
-nextflow run ../main.nf  --input_batch_tsv ./samplesheet.tsv  --output_prefix barcode1 --threads 12 -resume
-
-
-for i in {1..6}; do
-    echo "Sampling 2000 reads from barcode_${i}..."
-    seqtk sample -s100 "/home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/barcode_${i}.fastq" 2000 > "barcode_${i}_small_2000.fastq"
-    sed -n '1~4p' barcode_${i}_small_2000.fastq | cut -d' ' -f1 | sed 's/^@//' >> sampled_ids.txt
-done
-echo "Total IDs collected: $(wc -l < sampled_ids.txt)"
-
-head -n 1 /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/sequencing_summary_FAW13613_a5c2ca27_5cde2a43.txt > test_sequencing_summary.txt
-grep -Ff sampled_ids.txt /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/sequencing_summary_FAW13613_a5c2ca27_5cde2a43.txt >> test_sequencing_summary.txt
-
-echo "Total reads in new summary: $(($(wc -l < test_sequencing_summary.txt) - 1))"
-
-#LOG
-seqtk sample -s100  /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/illumina_mock_data/SRA_Downloads/mock_community/ERR2935805_1.fastq 50000 > ERR2935805_1_LOG.fastq 
-seqtk sample -s100  /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/illumina_mock_data/SRA_Downloads/mock_community/ERR2935805_2.fastq 50000 > ERR2935805_2_LOG.fastq 
-
-#EVEN
-seqtk sample -s100  /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/illumina_mock_data/SRA_Downloads/mock_community/ERR2984773_1.fastq 50000 > ERR2984773_1_EVEN.fastq 
-seqtk sample -s100  /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/test_dir/fastq/illumina_mock_data/SRA_Downloads/mock_community/ERR2984773_2.fastq 50000 > ERR2984773_2_EVEN.fastq 
-
-
-#single file mode
-
-nextflow run ../main.nf \
-  filter_ONT \
-  --input_fastq /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/tests/data/ONT/barcode_1_small_2000.fastq \
-  --input_summary ./fastq/sequencing_summary_FAW13613_a5c2ca27_5cde2a43.txt \
-  --minimum_q_score 1 \
-  --minimum_channel 1 \
-  --maximum_channel  256 \
-  --threads 12 \
-  --output_prefix "barcode1_test"
-
-  nextflow run ../main.nf \
-  filter_ONT \
-  --input_fastq /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/tests/data/ONT/barcode_1_small_2000.fastq \
-  --input_summary ./fastq/sequencing_summary_FAW13613_a5c2ca27_5cde2a43.txt \
-  --minimum_q_score 1 \
-  --minimum_channel 257 \
-  --maximum_channel  512 \
-  --threads 12 \
-  --output_prefix "barcode1_ctrl"
-
-  nextflow run ../main.nf \
-  analyze \
-  --input_fastq /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/tests/data/Illumina/ERR2935805_1_LOG.fastq \
-  --input_fastq2 /home/CSCScience.ca/kbessono/WORK/Sequenoscope/source/nf-sequenoscope/tests/data/Illumina/ERR2935805_2_LOG.fastq \
-  --sequencing_type PE \
-  --input_reference ./fastq/Zymo_cleaned_ref.fasta \
-  --threads 12 \
-  --output_prefix "IlluminaLOG"
-
-
-
-  nextflow run ../main.nf  --input_batch_tsv ./samplesheets/samplesheet_illumina.tsv  --output_prefix illumina --threads 12 -resume
-
-  nextflow run ../main.nf  --input_batch_tsv ./samplesheets/samplesheet_ont.tsv  --output_prefix ont --threads 12 -resume

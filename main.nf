@@ -196,8 +196,8 @@ def helpMessage() {
       summary             (Optional) Path to sequencing_summary.txt for filtering
       reference           Path to reference FASTA file
       min_ch, max_ch      (Optional) Pore channel range for subsetting
-      group               (Optional) Specify two categories ('test' or 'control') for comparison plotting
-      barcode             (Optional) Common ID to pair test/control samples for plotting
+      group               (Optional) Specify two sample categories ('test' or 'control') for comparison plotting
+      barcode             (Optional) Common ID to pair test/control samples for plotting. Max two samples per barcode.
 
     Logic Overview:
       - If 'summary' and 'min_ch' are provided, the pipeline runs: 
