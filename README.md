@@ -62,24 +62,32 @@ The pipeline uses an automated, conditional execution path based on the metadata
 You can run individual modules for specific tasks for debugging or point testing purposes. 
 
 #### Running Filter_ONT module only
-Filters raw ONT reads based on channel number (e.g., to isolate "adaptive sampled" vs "normal" reads).
+Filters raw ONT reads based on channel number (e.g., to subset "adaptive sampled" vs "normal" reads from the same FASTQ input) and stops. Commands below will subset test and control samples based on the pore ranges.
+
 
 ```
-nextflow run main.nf filter_ONT --input_fastq ./tests/data/ONT/barcode_1_small_2000.fastq --input_summary ./tests/data/ONT/test_sequencing_summary.txt --minimum_channel 1 --maximum_channel 256 --output results_filter
+nextflow run main.nf filter_ONT --input_fastq ./tests/data/ONT/barcode_1_small_2000.fastq --input_summary ./tests/data/ONT/test_sequencing_summary.txt --minimum_channel 1 --maximum_channel 256 --output results_filter_ONT --output_prefix test_sample
+
+nextflow run main.nf filter_ONT --input_fastq ./tests/data/ONT/barcode_1_small_2000.fastq --input_summary ./tests/data/ONT/test_sequencing_summary.txt --minimum_channel 257 --maximum_channel 512 --output results_filter_ONT --output_prefix control_sample
 ```
 
 #### Running ANALYZE module only
-Runs the core Sequenoscope ANALYZE module on a single sample and stops.
+Runs the core Sequenoscope ANALYZE module on a single sample and stops. Here we would run ANALYZE on the subset reads from the FILTER_ONT module.
+
 
 ```
-nextflow run main.nf analyze --input_fastq tests/data/ONT/barcode_1_small_2000.fastq --input_reference tests/data/references/Zymo_cleaned_ref.fasta  --output results_analyze
+nextflow run main.nf analyze --input_fastq ./results_filter_ONT/control_sample/filter_ONT/control_sample_filtered_fastq_subset.fastq  --input_reference ./tests/references/Zymo_cleaned_ref.fasta  --output results_analyze --output_prefix test_sample --threads 4
+
+
+nextflow run main.nf analyze --input_fastq ./results_filter_ONT/test_sample/filter_ONT/test_sample_filtered_fastq_subset.fastq  --input_reference ./tests/references/Zymo_cleaned_ref.fasta  --output results_analyze --output_prefix control_sample --threads 4
+
 ```
 
 #### Running PLOT module only
-Manually generates a comparison plot between two previously analyzed directories representing two conditions.
+Generates a comparison plots between two previously analyzed directories representing two conditions (e.g., adataptive sampling vs nomral sequencing).
 
 ```
-nextflow run main.nf --mode plot --test_dir results/sample1/analyze_results --control_dir results/sample2/analyze_results --output results_plot
+nextflow run main.nf plot --test_dir ./results_analyze/test_sample/test_sample_analyze_results/  --control_dir ./results_analyze/control_sample/control_sample_analyze_results/  --output results_plot
 ```
 
 

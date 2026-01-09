@@ -13,7 +13,7 @@ workflow {
 
     def CLI_command = args[0]
     def run_batch = params.input_batch_tsv ? true : false
-    ch_inputs = (params.input_batch_tsv) ? get_batch_inputs(params.input_batch_tsv) : get_single_inputs()
+    
 
      // If batch, continue to Analyze; if single, stop here.
     if (run_batch) {
@@ -108,7 +108,7 @@ workflow {
 
     // SINGLE FILE MODE FILTERING MODE
     if (CLI_command == 'filter_ONT') {
-        
+        ch_inputs = get_single_inputs() 
         ch_inputs.view { meta, fastq, sum, ref, min, max ->
             "RUNNING: Starting FILTER_ONT for sample ${meta.id} ${sum} ${ref} ${min} ${max}"
         }
@@ -131,6 +131,7 @@ workflow {
 
     // SINGLE FILE MODE ANALYZE
     else if (CLI_command == 'analyze') {
+        ch_inputs = get_single_inputs() 
         ch_inputs.view { meta, fastq, sum, ref, min, max ->
             "RUNNING: Starting ANALYZE for sample ${meta.id} ${fastq}"
         }
@@ -148,16 +149,8 @@ workflow {
 
     // SINGLE FILE MODE PLOT
     else if (CLI_command == 'plot') {
-        // Handle input channel creation
-        if (params.input_batch_tsv) {
-            ch_plot_input = Channel.fromPath(params.input_batch_tsv)
-                .splitCsv(sep: '\t', header: true)
-                .map { row ->
-                    def meta = [id: row.sample, group: row.group, barcode: row.barcode]
-                    return [ meta, file(row.test_dir), row.control_dir ? file(row.control_dir) : [] ]
-                }
-        } 
-        else if (params.test_dir && params.control_dir) {
+        
+        if (params.test_dir && params.control_dir) {
             def meta = [id: params.output_prefix ?: "manual_plot"]
             ch_plot_input = Channel.of([
                 meta, 
@@ -229,7 +222,7 @@ def get_batch_inputs(tsv) {
         .map { row ->
             def meta = [
                 id: row.sample, 
-                group: row.group ?: 'none', 
+                group: row.group ?: '', 
                 barcode: row.barcode ?: row.sample,
                 is_paired: row.fastq2 ? true : false
             ]
@@ -244,7 +237,7 @@ def get_batch_inputs(tsv) {
 
 def get_single_inputs() {
     if (!params.input_fastq) { error "Error: Must provide --input_fastq for this mode." }
-    def meta = [id: params.output_prefix, group: 'none', barcode: params.output_prefix]
+    def meta = [id: params.output_prefix, group: '', barcode: params.output_prefix]
     def fastq_files = params.input_fastq2 ? 
         [ file(params.input_fastq), file(params.input_fastq2) ] : 
         file(params.input_fastq)

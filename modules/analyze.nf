@@ -7,7 +7,7 @@ process RUN_ANALYZE {
     tuple val(meta), path(fastqs), path(input_summary), path(reference), val(min_ch), val(max_ch)
 
     output:
-    tuple val(meta), path("analyze_results_${meta.group}"), emit: analysis_results
+    tuple val(meta), path("${meta.id}_analyze_results${meta.group}"), emit: analysis_results
 
     script:
     // Simply list the parameter names that match the long-form flags
@@ -46,7 +46,7 @@ process RUN_ANALYZE {
     sequenoscope analyze \\
         --input_fastq ${fastq1} ${fastq2} \\
         --input_reference ${reference} \\
-        --output analyze_results_${meta.group} \\
+        --output ${meta.id}_analyze_results${meta.group} \\
         --sequencing_type ${seq_type} \\
         ${seq_sum_opt} \\
         ${options}
