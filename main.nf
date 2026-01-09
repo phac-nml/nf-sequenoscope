@@ -113,19 +113,19 @@ workflow {
             "RUNNING: Starting FILTER_ONT for sample ${meta.id} ${sum} ${ref} ${min} ${max}"
         }
 
-        ch_filtered = FILTER_ONT(ch_inputs).results
+        //Need to map the 6-item ch_inputs to the 5-item tuple FILTER_ONT expects
+        ch_filtered = FILTER_ONT(ch_inputs.map { meta, fq, sum, ref, min, max ->
+            return [ meta, fq, sum, min, max ] }).results
                 
-        ch_filtered.view { meta, fastq, ref, min, max -> 
-            def range = (min != null && max != null) ? "${min}-${max}" : "all"
+        ch_filtered.view { meta, fastq -> 
             return """
             ------------------------------------------------------------------
             SUCCESS: FILTER_ONT for sample ${meta.id} is complete.
-            - Filtered Channels: ${range}
             - Output File: ${fastq.name}
             - Results moved to: ${params.output}/${meta.id}/filter_ONT/
             ------------------------------------------------------------------
             """.stripIndent()
-        }  
+        }
        
     }
 
