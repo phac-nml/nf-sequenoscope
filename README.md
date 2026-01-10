@@ -85,6 +85,22 @@ Below is the example samplesheet with supported column names.
 > - The `min_ch` and `max_ch` represent the specific physical pore ranges on the flow cell. If these and a sequence_summary_file are
 > - To ensure the PLOT module functions correctly, you must use exactly `test` and `control` in the group column. Any other values will result in pipeline failure
 
+#### Samplesheet Fields Breakdown
+
+The TSV samplesheet uses specific columns to orchestrate the workflow. Below is a description of each field and its impact on the pipeline logic
+
+| **Column**                | **Description**                     | **Mandatory** | **Logic Impact**                                              |
+| ------------------------- | ----------------------------------- | ------------- | ------------------------------------------------------------- |
+| **sample**                | A unique identifier for the sample. | Yes           | Used for output directory naming and file prefixes.           |
+| **fastq**                 | Path to the input FASTQ file.       | Yes           | Primary data source for all modules. If **fastq2** is not provided, assumes ONT long-read data.                         |
+| **fastq2**                | Path to the R2 file for Illumina datasets.   | No            | If populated, the **ANALYZE** module runs in Paired-End mode |
+| **reference_file**        | Path to the FASTA reference.        | Yes           | Used by **ANALYZE** for mapping and coverage stats.           |
+| **sequence_summary_file** | ONT `sequencing_summary.txt`.       | No            | Required to run the **FILTER_ONT** module.                |
+| **min_ch**                | Starting pore/channel (e.g. `1`).   | No            | Combined with `max_ch` to subset ONT reads for a given barcode.                   |
+| **max_ch**                | Ending pore/channel (e.g. `256`).   | No            | Combined with `min_ch` to subset ONT reads for a given barcode.                   |
+| **group**                 | Condition: `test` or `control`.     | No            | Required for the **PLOT** module to pair samples.             |
+| **barcode**               | Common ID for pairing.              | No            | Samples with the same barcode are paired for comparison.      |
+
 ### Single-File Mode (Manual mode for debugging)
 You can run individual modules for specific tasks for debugging or point testing purposes. 
 
