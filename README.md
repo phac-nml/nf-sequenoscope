@@ -48,24 +48,32 @@ We used the ZymoBIOMICS mock communities to validate mapping and abundance estim
 - References: A cleaned Zymo reference FASTA containing all taxa of interest is located in `tests/references/`.
 
 ## Usage
-### Batch Mode (Recommended)
-The most powerful way to run nf-sequenoscope. This mode reads a Samplesheet (TSV) and automatically determines if it needs to filter, analyze, or plot the data
+### Batch Mode (Recommended for high throughput)
+This is the most powerful way to run `nf-sequenoscope` pipeline. This mode reads a samplesheet (TSV) and automatically determines if it needs to filter or analyze the data first depending on avalaible fields for each sample. All results for each run are saved in the `nf-sequenoscope-results` output folder by default (this could be customized by the `--output`).
 
 
 ```
-nextflow run main.nf --input_batch_tsv ./tests/samplesheets/samplesheet_ont.tsv --output batch_results_exp1 --threads 4
+# Run ONT batch (includes filtering if channel ranges are specified via min_ch and max_ch)
+nextflow run main.nf --input_batch_tsv ./tests/samplesheets/samplesheet_ont.tsv --output batch_results_ont --threads 4
+
+# Run Illumina batch (skips filtering automatically)
+nextflow run main.nf --input_batch_tsv ./tests/samplesheets/samplesheet_illumina.tsv --output batch_results_illumina --threads 4
 ```
 
 #### Processing logic
 The pipeline uses an automated, conditional execution path based on the metadata provided in the samplesheet:
 
-* **Step 1: Filtration**: If `min_ch`, `max_ch`, and a `sequence_summary_file` are provided, the pipeline automatically triggers the **FILTER_ONT** module to subset reads based on pore channel data.
+* **Step 1: Filtration (ONT data only)**: If `min_ch`, `max_ch`, and a `sequence_summary_file` are provided, the pipeline automatically triggers the **FILTER_ONT** module to subset reads based on pore channel data.
 * **Step 2: Core Analysis**: The **ANALYZE** module processes the reads (either filtered or raw) against the specified `reference_file` to generate mapping statistics and coverage profiles and other stats.
 * **Step 3: Comparative Results Visualization**: Finally, the **PLOT** module identifies samples sharing a common `barcode` and pairs them based on the `group` field. This generates comparative plots for **Test** (e.g., Adaptive Sampling) vs. **Control** (e.g., Normal Run) conditions.
-
+  
+>[!NOTE]
+>Illumina and ONT Data: For Illumina data or standard ONT runs (where adaptive sampling subsets are not required), the pipeline automatically skips **Step 1**. Since sequencing summaries and pore ranges do not apply to these data types, the execution begins directly with the ANALYZE module.
 
 #### Samplesheet Format 
 The samplesheet is a tab-separated (TSV) file used to drive the Batch Mode of the pipeline. It allows for the parallel processing of multiple runs, automatically determining whether to perform filtering or directly analyze samples ending with the comparative plotting based on the columns/fields provided.
+
+Below is the example samplesheet with supported column names.
 
 | sample | fastq | fastq2| reference_file | min_ch | max_ch | group | barcode | 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | 
