@@ -47,6 +47,37 @@ We used the ZymoBIOMICS mock communities to validate mapping and abundance estim
 
 - References: A cleaned Zymo reference FASTA containing all taxa of interest is located in `tests/references/`.
 
+
+
+## Prerequisites & Installation
+This pipeline is built using Nextflow and requires it to be installed on your system.
+
+- Nextflow: [Installation Guide](https://www.nextflow.io/docs/latest/install.html)
+- Software Dependencies: You do not need to install Sequenoscope manually. The pipeline manages all dependencies through Conda, Docker, or Singularity. Choose the engine that best fits your environment.
+
+### Profiles
+Run the pipeline with the `-profile` to automatically handle all tool dependencies. If `-profile` is not specified the default `standard` profile is run.
+
+| Profile | Description | Use Case Scenario |
+| :--- | :--- | :--- |
+| **standard** | Local execution | Software must be pre-installed in your `$PATH`. |
+| **conda** | Conda-based environment | Personal workstations; no root access needed. |
+| **docker** | Containerized (Docker) | Desktop/Linux servers; provides best reproducibility. |
+| **singularity** | Containerized (Singularity) | Legacy HPC clusters; runs without root privileges. |
+| **apptainer** | Containerized (Apptainer) | Modern HPC clusters; the successor to Singularity. |
+
+### Docker Permission Setup
+If you encounter a permission denied error when using `-profile docker` on Linux, your user likely lacks sudo access to the Docker daemon. Run these commands to fix it:
+
+```
+# Add your user to the docker group
+sudo usermod -aG docker $USER
+# Refresh your session to apply changes
+newgrp docker
+# Verify access (should show your local images)
+docker images
+```
+
 ## Usage
 ### Batch Mode (Recommended for high throughput)
 This is the most powerful way to run `nf-sequenoscope` pipeline. This mode reads a samplesheet (TSV) and automatically determines if it needs to filter or analyze the data first depending on avalaible fields for each sample. All results for each run are saved in the `nf-sequenoscope-results` output folder by default (this could be customized by the `--output`).
@@ -82,8 +113,8 @@ Below is the example samplesheet with supported column names.
 
 >[!NOTE] 
 > - Paths in the samplesheet can be relative to the samplesheet file itself or use absolute paths
-> - The `min_ch` and `max_ch` represent the specific physical pore ranges on the flow cell. If these and a sequence_summary_file are
-> - To ensure the PLOT module functions correctly, you must use exactly `test` and `control` in the group column. Any other values will result in pipeline failure
+> - The `min_ch` and `max_ch` represent the specific physical pore ranges on the flow cell. They should be covered by the `sequence_summary_file`
+> - To ensure the PLOT module functions correctly, you must use exactly `test` and `control` words in the group column. 
 
 #### Samplesheet Fields Breakdown
 

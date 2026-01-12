@@ -5,7 +5,8 @@ process RUN_PLOT {
         mode: 'copy', 
         saveAs: { filename -> file(filename).name }
     
-    conda "bioconda::sequenoscope=1.0"
+    conda "${moduleDir}/environment.yml"
+    container "quay.io/biocontainers/sequenoscope:1.0.0--pyh7e72e81_1" // Nextflow automatically prefixes this with 'docker://' when using Singularity
 
     input:
     tuple val(meta), path(test_dir), path(ctrl_dir)
@@ -14,39 +15,22 @@ process RUN_PLOT {
     tuple val(meta), path("plot_results/*"), emit: plot_results
 
     script:
-    // These names now match your nextflow.config keys exactly
-    def plot_flags = [
-        'output_prefix', 
-        'violin_data_percent', 
-        'time_bin_unit'
-    ]
-
-    def options = plot_flags.collect { flag ->
-        if (params[flag] != null && params[flag] != get_default_plot(flag)) {
-            return "--${flag} ${params[flag]}"
-        }
-    }.findAll().join(' ')
 
     // Handle boolean flags (flags that don't take a value)
-    if (params.adaptive_sampling) options += " --adaptive_sampling"
-    if (params.force)             options += " --force"
-    println "Running Plot on test_dir ${test_dir} and ctrl_dir ${ctrl_dir} with options: ${options}"
+    def combined_prefix = params.output_prefix ? "${params.output_prefix}_${meta.id}" : "${meta.id}"
+    log.info "Running PLOT on test_dir: '${test_dir}' and ctrl_dir: '${ctrl_dir}'"
 
     """
     sequenoscope plot \\
         --test_dir ${test_dir} \\
         --control_dir ${ctrl_dir} \\
         --output_dir plot_results \\
-        ${options}
+        --output_prefix ${combined_prefix} \\
+        --violin_data_percent ${params.violin_data_percent} \\
+        --time_bin_unit ${params.time_bin_unit} \\
+        ${params.adaptive_sampling ? '--adaptive_sampling' : ''} \\
+        ${params.force ? '--force' : '--force'}
     """
-}
-
-def get_default_plot(name) {
-    def defaults = [
-        'output_prefix': 'sample', 
-        'violin_data_percent': 0.1
-    ]
-    return defaults[name]
 }
 
 

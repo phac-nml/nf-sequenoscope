@@ -4,29 +4,19 @@ process RUN_FILTER_ONT {
     publishDir "${params.output}/${meta.id}/filter_ONT", 
         mode: 'copy', 
         saveAs: { filename -> file(filename).name }
-    conda "bioconda::sequenoscope=1.0.0"
+    
+    conda "${moduleDir}/environment.yml"
+    container "quay.io/biocontainers/sequenoscope:1.0.0--pyh7e72e81_1" // Nextflow automatically prefixes this with 'docker://' when using Singularity
 
     input:
     tuple val(meta), path(fastq_inputs), path(input_summary), val(min_ch), val(max_ch)
 
     output:
-    tuple val(meta), path("filter_results/*.fastq"), emit: filtered_results
+    tuple val(meta), path("${meta.id}_filtered/*.fastq"), emit: filtered_results
 
     script:
-    def global_flags = [
-    'minimum_duration', 'maximum_duration', 'minimum_start_time', 
-    'maximum_start_time', 'minimum_q_score', 'maximum_q_score', 
-    'minimum_length', 'maximum_length', 'output_prefix', 'classification'
-    ]
 
-    def options = global_flags.collect { flag ->
-        if (params[flag] != null && params[flag] != get_default(flag)) {
-            return "--${flag} ${params[flag]}"
-        }
-    }.findAll().join(' ')
-
-
-    if (params.force)             options += " --force"
+    def combined_prefix = params.output_prefix ? "${params.output_prefix}_${meta.id}" : "${meta.id}"
 
     def final_min = (min_ch != null) ? min_ch : params.minimum_channel // Use provided min_ch in TSV file or default from nextflow.config or CLI
     def final_max = (max_ch != null) ? max_ch : params.maximum_channel // Use provided max_ch in TSV file or default from nextflow.config or CLI
@@ -35,27 +25,24 @@ process RUN_FILTER_ONT {
     if (final_min != null) channel_options += "--minimum_channel ${final_min} "
     if (final_max != null) channel_options += "--maximum_channel ${final_max}"
 
-    println "Running Filter_ONT on ${fastq_inputs.join(' ')} with options:  ${options} ${channel_options}"
+    log.info "Running Filter_ONT on ${fastq_inputs.join(' ')}"
 
     """
+
     sequenoscope filter_ONT \\
         --input_fastq ${fastq_inputs.join(' ')} \\
         --input_summary $input_summary \\
-        --output filter_results \\
+        --output ${meta.id}_filtered \\
+        --output_prefix ${combined_prefix} \\
+        --minimum_length ${params.minimum_length} \\
+        --maximum_length ${params.maximum_length} \\
+        --minimum_q_score ${params.minimum_q_score} \\
+        --classification ${params.classification} \\
         ${channel_options} \\
-        ${options}
+        ${params.force ? '--force' : ''}
     """
 }
 
-def get_default(name) {
-    def defaults = [
-        'classification': 'all', 'minimum_channel': 1, 'maximum_channel': 512, 
-        'minimum_duration': 0, 'maximum_duration': 100, 'minimum_start_time': 0, 
-        'maximum_start_time': 259200, 'minimum_q_score': 0, 'maximum_q_score': 100, 
-        'minimum_length': 0, 'maximum_length': 50000, 'output_prefix': 'sample'
-    ]
-    return defaults[name]
-}
 
 workflow FILTER_ONT {
     take: ch_to_filter

@@ -3,29 +3,17 @@ process RUN_ANALYZE {
 
     publishDir "${params.output}/${meta.id}/", mode: 'copy', overwrite: true
 
+    conda "${moduleDir}/environment.yml"
+    container "quay.io/biocontainers/sequenoscope:1.0.0--pyh7e72e81_1" // Nextflow automatically prefixes this with 'docker://' when using Singularity
+
     input:
     tuple val(meta), path(fastqs), path(input_summary), path(reference), val(min_ch), val(max_ch)
 
     output:
-    tuple val(meta), path("${meta.id}_analyze_results${meta.group}"), emit: analysis_results
+    tuple val(meta), path("${meta.id}_analyze_${meta.group}results"), emit: analysis_results
 
     script:
-    // Simply list the parameter names that match the long-form flags
-    def analyze_flags = [
-        'minimum_coverage', 'threads', 'minimum_read_length', 
-        'maximum_read_length', 'trim_front_bp', 'trim_tail_bp', 
-        'quality_threshold', 'start_time', 'end_time', 
-        'output_prefix', 'minimap2_kmer'
-    ]
-
-    def options = analyze_flags.collect { flag ->
-        if (params[flag] != null && params[flag] != get_default_analyze(flag)) {
-            return "--${flag} ${params[flag]}"
-        }
-    }.findAll().join(' ')
-
-    if (params.force) options += " --force"
-
+    def combined_prefix = params.output_prefix ? "${params.output_prefix}_${meta.id}" : "${meta.id}"
     def seq_type = (fastqs instanceof List && fastqs.size() == 2) ? 'PE' : params.sequencing_type
 
     // FIX: Correctly split fastq files for paired-end mode
@@ -40,27 +28,29 @@ process RUN_ANALYZE {
     }
     // Handle the sequencing summary and type explicitly as they are often required
     def seq_sum_opt = (input_summary && !input_summary.empty()) ? "--sequencing_summary ${input_summary}" : ""
-    println "[ANALYZE] ID: ${meta.id} | Mode: ${seq_type} | Files: ${fastqs} | Ref: ${reference}"
+    log.info "Running ANALYZE on ID: ${meta.id} | Mode: ${seq_type} | Files: ${fastqs} | Ref: ${reference}"
 
     """
     sequenoscope analyze \\
         --input_fastq ${fastq1} ${fastq2} \\
         --input_reference ${reference} \\
-        --output ${meta.id}_analyze_results${meta.group} \\
+        --output ${meta.id}_analyze_${meta.group}results \\
         --sequencing_type ${seq_type} \\
+        --output_prefix ${combined_prefix} \\
+        --sequencing_type ${seq_type} \\
+        --threads ${params.threads} \\
+        --minimum_coverage ${params.minimum_coverage} \\
+        --minimum_read_length ${params.minimum_read_length} \\
+        --maximum_read_length ${params.maximum_read_length} \\
+        --trim_front_bp ${params.trim_front_bp} \\
+        --trim_tail_bp ${params.trim_tail_bp} \\
+        --quality_threshold ${params.quality_threshold} \\
         ${seq_sum_opt} \\
-        ${options}
+        ${params.force ? '--force' : '--force'}
     """
 }
 
-def get_default_analyze(name) {
-    def defaults = [
-        'minimum_coverage': 1, 'threads': 1, 'minimum_read_length': 15,
-        'maximum_read_length': 0, 'trim_front_bp': 0, 'trim_tail_bp': 0,
-        'quality_threshold': 15, 'start_time': 0, 'end_time': 100, 'minimap2_kmer': 15
-    ]
-    return defaults[name]
-}
+
 
 workflow ANALYZE {
     take: ch_to_analyze

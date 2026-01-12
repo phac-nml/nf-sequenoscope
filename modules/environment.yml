@@ -1,0 +1,7 @@
+name: sequenoscope
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bioconda::sequenoscope=1.0.0
