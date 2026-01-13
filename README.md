@@ -79,7 +79,7 @@ docker images
 ```
 
 ## Usage
-### Batch Mode (Recommended for high throughput)
+### Batch Mode (Recommended for high throughput parallele processing)
 This is the most powerful way to run `nf-sequenoscope` pipeline. This mode reads a samplesheet (TSV) and automatically determines if it needs to filter or analyze the data first depending on available fields for each sample. All results for each run are saved in the `nf-sequenoscope-results` output folder by default (this could be customized by the `--output`).
 
 
@@ -116,7 +116,7 @@ Below is the example samplesheet with supported column names.
 > - The `min_ch` and `max_ch` define the inclusive range of physical pore channels (e.g., 1–512 for MinION/GridION) to be extracted. These values must correspond exactly to the `channel` column in your `sequence_summary_file` to enable successful read sub-setting.
 > - To ensure the PLOT module functions correctly, the `group` column strictly requires one of two specific values: `test` or `control`. Other values will not be recognized for sample pairing as this is essential for the PLOT module to perform comparative analysis.
 
-#### Samplesheet Fields Breakdown
+#### Samplesheet Fields
 
 The TSV samplesheet uses specific columns to orchestrate the workflow. Below is a description of each field and its impact on the pipeline logic
 
@@ -132,33 +132,42 @@ The TSV samplesheet uses specific columns to orchestrate the workflow. Below is 
 | **group**                 | Condition: `test` or `control`.     | No            | Required for the **PLOT** module to pair samples.             |
 | **barcode**               | Common ID for pairing.              | No            | Samples with the same barcode are paired for comparison.      |
 
-### Single-File Mode (Manual mode for debugging)
-You can run individual modules for specific tasks for debugging or point testing purposes. 
+### Single-File Mode (Manual Walkthrough)
+You can run individual modules for debugging or point testing purposes. Using the sample data stored in the tests/ folder, you can manually step through the entire pipeline—from filtering raw reads to generating final comparative plots.
 
-#### Running Filter_ONT module only
-Filters raw ONT reads based on channel number (e.g., to subset "adaptive sampled" vs "normal" reads from the same FASTQ input) and stops. Commands below will subset test and control samples based on the pore ranges.
+>[!TIP] While manual mode is great for debugging, Batch Mode is highly recommended for large sample sizes as it automates these steps into a single command.
+
+#### Step 1: Running Filter_ONT module (Filter raw ONT reads)
+Filters raw ONT reads based on channel number (e.g., to subset "adaptive sampled" vs "normal" reads from the same FASTQ input) and stops. 
+
+
+First, we subset "adaptive sampled" vs "normal" reads from the same FASTQ input based on physical pore ranges.
 
 
 ```
+# Filter for 'Test' group undergoing AS sequencing (Channels 1-256)
 nextflow run main.nf filter_ONT --input_fastq ./tests/data/ONT/barcode_1_small_2000.fastq --input_summary ./tests/data/ONT/test_sequencing_summary.txt --minimum_channel 1 --maximum_channel 256 --output results_filter_ONT --output_prefix test_sample
 
+# Filter for 'Control' group undergoing Normal sequencing (Channels 257-512)
 nextflow run main.nf filter_ONT --input_fastq ./tests/data/ONT/barcode_1_small_2000.fastq --input_summary ./tests/data/ONT/test_sequencing_summary.txt --minimum_channel 257 --maximum_channel 512 --output results_filter_ONT --output_prefix control_sample
 ```
 
-#### Running ANALYZE module only
+#### Step 2: Running ANALYZE module (Analyze subsetted reads)
 Runs the core Sequenoscope ANALYZE module on a single sample and stops. Here we would run ANALYZE on the subset reads from the FILTER_ONT module.
 
+Next, run the core ANALYZE module on the outputs from Step 1 to generate read mapping statistics against the Zymo reference.
 
 ```
-nextflow run main.nf analyze --input_fastq ./results_filter_ONT/control_sample/filter_ONT/control_sample_filtered_fastq_subset.fastq  --input_reference ./tests/references/Zymo_cleaned_ref.fasta  --output results_analyze --output_prefix test_sample --threads 4
+# Run Analyze on Test Sample
+nextflow run main.nf analyze --input_fastq  ./results_filter_ONT/test_sample/filter_ONT/test_sample_test_sample_filtered_fastq_subset.fastq --input_reference ./tests/references/Zymo_cleaned_ref.fasta  --output results_analyze --output_prefix test_sample --threads 4
 
-
-nextflow run main.nf analyze --input_fastq ./results_filter_ONT/test_sample/filter_ONT/test_sample_filtered_fastq_subset.fastq  --input_reference ./tests/references/Zymo_cleaned_ref.fasta  --output results_analyze --output_prefix control_sample --threads 4
+# Run Analyze on Control Sample
+nextflow run main.nf analyze --input_fastq ./results_filter_ONT/control_sample/filter_ONT/control_sample_control_sample_filtered_fastq_subset.fastq  --input_reference ./tests/references/Zymo_cleaned_ref.fasta  --output results_analyze --output_prefix control_sample --threads 4
 
 ```
 
-#### Running PLOT module only
-Generates a comparison plots between two previously analyzed directories representing two conditions (e.g., adataptive sampling vs nomral sequencing).
+#### Step 3: Running PLOT module (Generate comparative plots)
+Finally, use the PLOT module to compare the two experimental conditions (e.g., adataptive sampling vs nomral sequencing).
 
 ```
 nextflow run main.nf plot --test_dir ./results_analyze/test_sample/test_sample_analyze_results/  --control_dir ./results_analyze/control_sample/control_sample_analyze_results/  --output results_plot
