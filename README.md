@@ -1,6 +1,6 @@
 # nf-sequenoscope
 
-This scalable Nextflow wrapper for Sequenoscope for high-throughput environments, enabling parallel processing of multiple sequencing runs at scale. It automates orchestration across three specialized modules: Filter_ONT, Analyze, and Plot ensuring consistent and reproducible results generation across large datasets.
+This scalable Nextflow wrapper for Sequenoscope for high-throughput environments, enables parallel processing of multiple sequencing runs at scale. It automates orchestration across three specialized modules: Filter_ONT, Analyze, and Plot ensuring consistent and reproducible results generation across large datasets.
 
 While adaptive sampling creates unique challenges in data management, this pipeline automates the orchestration across three specialized modules, ensuring consistent and reproducible interpretation across large-scale datasets. This pipeline addresses these through three specialized modules, using automated logic to detect and trigger the correct execution path based on your specific parameter inputs:
 
@@ -80,7 +80,7 @@ docker images
 
 ## Usage
 ### Batch Mode (Recommended for high throughput)
-This is the most powerful way to run `nf-sequenoscope` pipeline. This mode reads a samplesheet (TSV) and automatically determines if it needs to filter or analyze the data first depending on avalaible fields for each sample. All results for each run are saved in the `nf-sequenoscope-results` output folder by default (this could be customized by the `--output`).
+This is the most powerful way to run `nf-sequenoscope` pipeline. This mode reads a samplesheet (TSV) and automatically determines if it needs to filter or analyze the data first depending on available fields for each sample. All results for each run are saved in the `nf-sequenoscope-results` output folder by default (this could be customized by the `--output`).
 
 
 ```
@@ -113,8 +113,8 @@ Below is the example samplesheet with supported column names.
 
 >[!NOTE] 
 > - Paths in the samplesheet can be relative to the samplesheet file itself or use absolute paths
-> - The `min_ch` and `max_ch` represent the specific physical pore ranges on the flow cell. They should be covered by the `sequence_summary_file`
-> - To ensure the PLOT module functions correctly, you must use exactly `test` and `control` words in the group column. 
+> - The `min_ch` and `max_ch` define the inclusive range of physical pore channels (e.g., 1–512 for MinION/GridION) to be extracted. These values must correspond exactly to the `channel` column in your `sequence_summary_file` to enable successful read sub-setting.
+> - To ensure the PLOT module functions correctly, the `group` column strictly requires one of two specific values: `test` or `control`. Other values will not be recognized for sample pairing as this is essential for the PLOT module to perform comparative analysis.
 
 #### Samplesheet Fields Breakdown
 

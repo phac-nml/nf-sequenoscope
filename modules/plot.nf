@@ -6,7 +6,10 @@ process RUN_PLOT {
         saveAs: { filename -> file(filename).name }
     
     conda "${moduleDir}/environment.yml"
-    container "quay.io/biocontainers/sequenoscope:1.0.0--pyh7e72e81_1" // Nextflow automatically prefixes this with 'docker://' when using Singularity
+    // nf-core standard: dynamic selection between native Singularity SIF and Docker image
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/sequenoscope:1.0.0--pyh7e72e81_1' :
+        'quay.io/biocontainers/sequenoscope:1.0.0--pyh7e72e81_1' }"
 
     input:
     tuple val(meta), path(test_dir), path(ctrl_dir)
