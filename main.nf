@@ -1,22 +1,25 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
+
 // Import modules
 include { FILTER_ONT } from './modules/filter_ONT'
 include { ANALYZE }    from './modules/analyze'
 include { PLOT }       from './modules/plot'
 
-
-
 workflow {
-    if (params.help) { helpMessage(); return }
+    def MODULE_FILTER_NAME = 'filter_ONT'
+    def MODULE_ANALYZE_NAME = 'analyze'
+    def MODULE_PLOT_NAME    = 'plot'
 
-    def CLI_command = args[0]
-    def run_batch = params.input_batch_tsv ? true : false
+    if (params.help) { helpMessage(); exit 0}
+    if (params.version) { println "nf-sequenoscope version: ${workflow.manifest.version}"; exit 0 }
+
     
+    def CLI_command = args.size() > 0 ? args[0] : null
 
      // If batch, continue to Analyze; if single, stop here.
-    if (run_batch) {
+    if (params.input_batch_tsv) {
             ch_inputs = get_batch_inputs(params.input_batch_tsv)
 
             ch_inputs.branch {
@@ -109,7 +112,7 @@ workflow {
     }
 
     // SINGLE FILE MODE FILTERING MODE
-    if (CLI_command == 'filter_ONT') {
+    else if (CLI_command == MODULE_FILTER_NAME) {
         ch_inputs = get_single_inputs() 
         ch_inputs.view { meta, fastq, sum, ref, min, max ->
             log.info "RUNNING: Starting FILTER_ONT for sample ${meta.id} ${sum} ${ref} ${min} ${max}"
@@ -132,7 +135,7 @@ workflow {
     }
 
     // SINGLE FILE MODE ANALYZE
-    else if (CLI_command == 'analyze') {
+    else if (CLI_command == MODULE_ANALYZE_NAME) {
         ch_inputs = get_single_inputs() 
         ch_inputs.view { meta, fastq, sum, ref, min, max ->
             log.info "RUNNING: Starting ANALYZE for sample ${meta.id} ${fastq}"
@@ -146,7 +149,7 @@ workflow {
     }
 
     // SINGLE FILE MODE PLOT
-    else if (CLI_command == 'plot') {
+    else if (CLI_command == MODULE_PLOT_NAME) {
         
         if (params.test_dir && params.control_dir) {
             def meta = [id: params.output_prefix ?: "manual_plot"]
@@ -173,41 +176,86 @@ workflow {
             log.info"SUCCESS: PLOT complete for ${meta.id}. Results: ${params.output}/${meta.id}/plots/"
         }
     }
+    else {
+            log.error "ERROR: Invalid usage. Provide --input_batch_tsv OR a module name (filter_ONT|analyze|plot)."
+            helpMessage()
+            exit 1
+    }
 
 }
+
+
+
+
 
 def helpMessage() {
     log.info"""
     nf-sequenoscope: Scalable Nextflow wrapper for Sequenoscope
+    version: ${workflow.manifest.version}
     ==========================================================
-    Usage:
-      nextflow run main.nf --input samplesheet.csv [options]
+    
+    1. BATCH MODE (Recommended)
+        Automatically handles filtering, analysis, and plotting for multiple samples.
+        Usage:
+            nextflow run main.nf --input_batch_tsv samplesheet.tsv [options]
+
+    2. SINGLE MODULE MODE (Manual/Debugging)
+        Run specific modules individually. Useful for troubleshooting.
+        Usage:
+            nextflow run main.nf <MODULE_NAME> [options]
+
+       Available Modules:
+         filter_ONT    - Subset reads based on pore channel ranges
+         analyze       - Run alignment and mapping statistics
+         plot          - Generate comparative enrichment plots
 
     Main Options:
-      --input             Path to CSV samplesheet (required for batch processing)
+      --input_batch_tsv   Path to TSV samplesheet (required for batch processing)
       --output            Directory to save results (default: ${params.output})
+      --threads           Number of threads per analysis job (default: ${params.threads})
       --force             Overwrite existing output files (default: ${params.force})
 
-    Samplesheet Columns (CSV):
+    Module-Specific Options:
+    
+      [Filter_ONT]
+      --input_fastq       Path to raw FASTQ
+      --input_summary     ONT sequencing_summary.txt
+      --minimum_channel   Min pore channel (default: ${params.minimum_channel})
+      --maximum_channel   Max pore channel (default: ${params.maximum_channel})
+      --minimum_q_score   Min Q-score threshold (default: ${params.minimum_q_score})
+      --minimum_length    Min read length (default: ${params.minimum_length})
+
+      [Analyze]
+      --input_reference   Path to reference FASTA
+      --sequencing_type   'SE' or 'PE' (default: ${params.sequencing_type})
+      --quality_threshold Min map quality (default: ${params.quality_threshold})
+      --minimap2_kmer     K-mer size for alignment (default: ${params.minimap2_kmer})
+
+      [Plot]
+      --test_dir          Path to Test results
+      --control_dir       Path to Control results
+      --time_bin_unit     Bin size for time plots (default: ${params.time_bin_unit})
+      --adaptive_sampling Is this an AS run? (default: ${params.adaptive_sampling})
+
+    Samplesheet Columns (TSV):
       sample              Unique ID for the run (used for file naming)
       fastq               Path to input FASTQ file
-      summary             (Optional) Path to sequencing_summary.txt for filtering
-      reference           Path to reference FASTA file
-      min_ch, max_ch      (Optional) Pore channel range for subsetting
-      group               (Optional) Specify two sample categories ('test' or 'control') for comparison plotting
-      barcode             (Optional) Common ID to pair test/control samples for plotting. Max two samples per barcode.
+      fastq2              (Optional) Path to R2 for Illumina paired-end data
+      sequence_summary_file (Optional) Path to ONT sequencing_summary.txt for filtering
+      reference_file      Path to reference FASTA file
+      min_ch, max_ch      (Optional) Pore channel range for subsetting (requires summary)
+      group               Must be 'test' or 'control' for comparative plotting
+      barcode             Common ID to pair 'test' and 'control' samples
 
     Logic Overview:
-      - If 'summary' and 'min_ch' are provided, the pipeline runs: 
-        Filter_ONT -> Analyze.
-      - If 'summary' is missing, the pipeline runs: 
-        Analyze only.
-      - If 'group' (test/control) and 'barcode' are provided, the pipeline:
-        Pairs the analyzed results and runs the Plot module.
+      - Step 1 (Filter): Triggered if 'sequence_summary_file', 'min_ch', and 'max_ch' are present.
+      - Step 2 (Analyze): Runs on all samples (filtered ONT, raw ONT, or Illumina).
+      - Step 3 (Plot): Triggered for samples sharing a 'barcode' with 'test'/'control' groups.
 
-    Performance:
-      -profile conda      Use automated Conda environment creation
-      --threads           Number of threads per analysis job (default: ${params.threads})
+    Profiles:
+      -profile conda      Managed Conda environments
+      -profile docker     Docker containers (requires sudo usermod -aG docker \$USER)
+      -profile singularity/apptainer  HPC-friendly containers
     """.stripIndent()
 }
 
@@ -215,16 +263,46 @@ def helpMessage() {
 
 def get_batch_inputs(tsv) {
     def tsv_parent = file(tsv).parent // Get the parent directory of the TSV file
+    def required_columns = [
+        'sample', 'fastq', 'fastq2', 'sequence_summary_file', 
+        'reference_file', 'min_ch', 'max_ch', 'group', 'barcode'
+    ]
     return Channel.fromPath(tsv)
         .splitCsv(sep: '\t', header: true)
         .map { row ->
+            // 1. VALIDATE HEADERS (Check if any required column is missing from the Map keys)
+            def missing_cols = required_columns.findAll { !row.containsKey(it) }
+            if (missing_cols) {
+                error """
+                ------------------------------------------------------------------
+                MISSING COLUMNS IN TSV
+                The following required columns are missing: ${missing_cols.join(', ')}
+                Check your TSV header names and ensure they are Tab-separated.
+                ------------------------------------------------------------------
+                """.stripIndent()
+            }
+            
+            def fastq_files = row.fastq2 ? [ tsv_parent.resolve(row.fastq.trim()), tsv_parent.resolve(row.fastq2.trim()) ] : [ tsv_parent.resolve(row.fastq.trim()) ]
+            def grp = row.group ? row.group.trim().toLowerCase() : ''
+            def allowed_groups = ['test', 'control'] //only these two values are allowed
+            // 2. VALIDATE 'group' column VALUES
+            if ( !allowed_groups.contains(grp) ) {
+                error """
+                ------------------------------------------------------------------
+                INVALID SAMPLESHEET ENTRY
+                Sample: ${row.sample}
+                Error : The 'group' column value '${row.group}' is invalid.
+                Fix   : Use 'test', 'control'.
+                ------------------------------------------------------------------
+                """.stripIndent()
+            }
             def meta = [
                 id: row.sample, 
                 group: row.group ?: '', 
                 barcode: row.barcode ?: row.sample,
                 is_paired: row.fastq2 ? true : false
             ]
-            def fastq_files = row.fastq2 ? [ tsv_parent.resolve(row.fastq.trim()), tsv_parent.resolve(row.fastq2.trim()) ] : [ tsv_parent.resolve(row.fastq.trim()) ]
+            
             return [ meta, fastq_files, 
             row.sequence_summary_file ? tsv_parent.resolve(row.sequence_summary_file.trim()) : [], 
             row.reference_file ? tsv_parent.resolve(row.reference_file.trim()) : [], 

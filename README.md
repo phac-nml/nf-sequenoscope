@@ -1,8 +1,37 @@
+[![Powered by Sequenoscope](https://img.shields.io/badge/Powered%20by-Sequenoscope-blue)](https://github.com/phac-nml/sequenoscope)
+![Nextflow](https://img.shields.io/badge/nextflow-%22%3E%3D23.04.0%22-brightgreen.svg)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/phac-nml/nf-sequenoscope)
+![DSL2](https://img.shields.io/badge/Nextflow-DSL2-biueviolet)
+
+## Contents <!-- omit from toc -->
+- [About Sequenoscope](#about-sequenoscope)
+- [Features](#features)
+- [Module overview](#module-overview)
+  - [Filter\_ONT Module](#filter_ont-module)
+  - [Analyze module](#analyze-module)
+  - [Plot Module](#plot-module)
+- [Sample Data](#sample-data)
+  - [ZymoBIOMICS Microbial Community Standards](#zymobiomics-microbial-community-standards)
+- [Prerequisites \& Installation](#prerequisites--installation)
+  - [Profiles](#profiles)
+  - [Docker Permission Setup](#docker-permission-setup)
+- [Usage](#usage)
+  - [Batch Mode (Recommended for high throughput parallele processing)](#batch-mode-recommended-for-high-throughput-parallele-processing)
+  - [Command Line Interface (CLI)](#command-line-interface-cli)
+  - [Single-File Mode (Manual Walkthrough)](#single-file-mode-manual-walkthrough)
+- [Citations](#citations)
+- [Contacts](#contacts)
+
 # nf-sequenoscope
 
-This scalable Nextflow wrapper for Sequenoscope for high-throughput environments, enables parallel processing of multiple sequencing runs at scale. It automates orchestration across three specialized modules: Filter_ONT, Analyze, and Plot ensuring consistent and reproducible results generation across large datasets.
+This scalable [Nextflow](https://www.nextflow.io/) wrapper for **[Sequenoscope](https://github.com/phac-nml/sequenoscope)** designed for high-throughput environments, enables parallel processing of multiple sequencing runs at scale. It automates orchestration across three specialized modules: Filter_ONT, Analyze, and Plot ensuring consistent and reproducible results generation across large datasets.
 
 While adaptive sampling creates unique challenges in data management, this pipeline automates the orchestration across three specialized modules, ensuring consistent and reproducible interpretation across large-scale datasets. This pipeline addresses these through three specialized modules, using automated logic to detect and trigger the correct execution path based on your specific parameter inputs:
+
+## About Sequenoscope
+This pipeline automates the orchestration of **[Sequenoscope](https://github.com/phac-nml/sequenoscope)**, a tool developed by the Public Health Agency of Canada (PHAC-NML). 
+
+For detailed information on the underlying algorithms, mapping logic, and specific tool requirements, please refer to the original Sequenoscope repository at [https://github.com/phac-nml/sequenoscope](https://github.com/phac-nml/sequenoscope)
 
 ## Features
 - End-to-End Automation in Batch Mode: Automatically chains filtering, analysis, and comparative plotting in a single run when using the batch mode.
@@ -15,6 +44,7 @@ While adaptive sampling creates unique challenges in data management, this pipel
 
 ## Module overview
 These modules form a pipeline that not only simplifies the data processing workflow but also enhances the ability of researchers to conduct detailed and meaningful analyses of ONT sequencing data. The Nextflow wrapper ensures the pipeline is scalable, reproducible, and easily integrable into larger bioinformatics operations, making it an invaluable resource for genomic research.
+
 
 ### Filter_ONT Module
 
@@ -35,17 +65,21 @@ These modules form a pipeline that not only simplifies the data processing workf
 The repository includes test data to showcase and test pipeline performance across ONT and Illumina sequencing technologies and mock community compositions.
 
 ### ZymoBIOMICS Microbial Community Standards
-We used the ZymoBIOMICS mock communities to validate mapping and abundance estimation.
+We used the ZymoBIOMICS mock communities standards to validate mapping and abundance estimation.
 
-- Illumina EVEN/LOG: Data sourced from the [Loman Lab Mock Community project](https://github.com/LomanLab/mockcommunity) (Accessions: ERR2935805 and ERR2984773).
+- **Illumina EVEN/LOG Data:** Data sourced from the [Loman Lab Mock Community project](https://github.com/LomanLab/mockcommunity) (Accessions: ERR2935805 and ERR2984773).
 
-  - EVEN community: Contains 8 bacteria and 2 yeasts at equal genomic concentrations.
+  - **EVEN community:** Features 8 bacteria and 2 yeasts at equal genomic concentrations. The test set contains 50,000 paired-end reads (R1/R2).
 
-  - LOG community: Features the same organisms but with abundances distributed on a logarithmic scale.
+  - **LOG community:** Features the same organisms with abundances distributed on a logarithmic scale. The test set contains 50,000 paired-end reads (R1/R2).
 
-- ONT Data: Subsampled Nanopore reads located in tests/data/ONT/ used for testing Adaptive Sampling filtration.
-
-- References: A cleaned Zymo reference FASTA containing all taxa of interest is located in `tests/references/`.
+- **ONT Data:** Subsampled ONT reads from from LOG and EVEN ZymoBIOMICS mock communities standards for the 6 barcodes located in `tests/data/ONT/` folder. 
+  - Each FASTQ file contains exactly 2,000 reads to facilitate rapid testing of the FILTER_ONT and ANALYZE modules.  
+  -  A single `test_sequencing_summary.txt` (covering 12,000 reads) is provided, containing the shared 
+  metadata for all 6 barcodes to enable testing of the FILTER_ONT module.
+  - For the specific mapping of these 6 barcodes to their respective experimental conditions and channel ranges, please refer to the [manuscript](https://www.microbiologyresearch.org/content/journal/acmi/10.1099/acmi.0.001059.v2). 
+  
+**References:** A cleaned Zymo reference FASTA containing all taxa of interest is located in `tests/references/`.
 
 
 
@@ -94,7 +128,7 @@ nextflow run main.nf --input_batch_tsv ./tests/samplesheets/samplesheet_illumina
 #### Processing logic
 The pipeline uses an automated, conditional execution path based on the metadata provided in the samplesheet:
 
-* **Step 1: Filtration (ONT data only)**: If `min_ch`, `max_ch`, and a `sequence_summary_file` are provided, the pipeline automatically triggers the **FILTER_ONT** module to subset reads based on pore channel data.
+* **Step 1: Filtration (ONT data only)**: If `min_ch`, `max_ch`, and a `sequence_summary_file` fields are provided for a given sample, the pipeline automatically triggers the **FILTER_ONT** module to subset reads based on pore channel data.
 * **Step 2: Core Analysis**: The **ANALYZE** module processes the reads (either filtered or raw) against the specified `reference_file` to generate mapping statistics and coverage profiles and other stats.
 * **Step 3: Comparative Results Visualization**: Finally, the **PLOT** module identifies samples sharing a common `barcode` and pairs them based on the `group` field. This generates comparative plots for **Test** (e.g., Adaptive Sampling) vs. **Control** (e.g., Normal Run) conditions.
   
@@ -131,6 +165,80 @@ The TSV samplesheet uses specific columns to orchestrate the workflow. Below is 
 | **max_ch**                | Ending pore/channel (e.g. `256`).   | No            | Combined with `min_ch` to subset ONT reads for a given barcode.                   |
 | **group**                 | Condition: `test` or `control`.     | No            | Required for the **PLOT** module to pair samples.             |
 | **barcode**               | Common ID for pairing.              | No            | Samples with the same barcode are paired for comparison.      |
+
+
+### Command Line Interface (CLI)
+For a full list of all available parameters and their default values, run the pipeline with the `--help` flag.
+
+
+```text
+nf-sequenoscope: Scalable Nextflow wrapper for Sequenoscope
+version: 1.0.0
+==========================================================
+
+1. BATCH MODE (Recommended)
+    Automatically handles filtering, analysis, and plotting for multiple samples.
+    Usage:
+        nextflow run main.nf --input_batch_tsv samplesheet.tsv [options]
+
+2. SINGLE MODULE MODE (Manual/Debugging)
+    Run specific modules individually. Useful for troubleshooting.
+    Usage:
+        nextflow run main.nf <MODULE_NAME> [options]
+
+   Available Modules:
+     filter_ONT    - Subset reads based on pore channel ranges
+     analyze       - Run alignment and mapping statistics
+     plot          - Generate comparative enrichment plots
+
+Main Options:
+  --input_batch_tsv   Path to TSV samplesheet (required for batch processing)
+  --output            Directory to save results (default: nf-sequenoscope-results)
+  --threads           Number of threads per analysis job (default: 1)
+  --force             Overwrite existing output files (default: false)
+
+Module-Specific Options:
+
+  [Filter_ONT]
+  --input_fastq       Path to raw FASTQ
+  --input_summary     ONT sequencing_summary.txt
+  --minimum_channel   Min pore channel (default: 1)
+  --maximum_channel   Max pore channel (default: 512)
+  --minimum_q_score   Min Q-score threshold (default: 0)
+  --minimum_length    Min read length (default: 0)
+
+  [Analyze]
+  --input_reference   Path to reference FASTA
+  --sequencing_type   'SE' or 'PE' (default: SE)
+  --quality_threshold Min map quality (default: 15)
+  --minimap2_kmer     K-mer size for alignment (default: 15)
+
+  [Plot]
+  --test_dir          Path to Test results
+  --control_dir       Path to Control results
+  --time_bin_unit     Bin size for time plots (default: 15m)
+  --adaptive_sampling Is this an AS run? (default: true)
+
+Samplesheet Columns (TSV):
+  sample              Unique ID for the run (used for file naming)
+  fastq               Path to input FASTQ file
+  fastq2              (Optional) Path to R2 for Illumina paired-end data
+  sequence_summary_file (Optional) Path to ONT sequencing_summary.txt for filtering
+  reference_file      Path to reference FASTA file
+  min_ch, max_ch      (Optional) Pore channel range for subsetting (requires summary)
+  group               Must be 'test' or 'control' for comparative plotting
+  barcode             Common ID to pair 'test' and 'control' samples
+
+Logic Overview:
+  - Step 1 (Filter): Triggered if 'sequence_summary_file', 'min_ch', and 'max_ch' are present.
+  - Step 2 (Analyze): Runs on all samples (filtered ONT, raw ONT, or Illumina).
+  - Step 3 (Plot): Triggered for samples sharing a 'barcode' with 'test'/'control' groups.
+
+Profiles:
+  -profile conda      Managed Conda environments
+  -profile docker     Docker containers (requires sudo usermod -aG docker $USER)
+  -profile singularity/apptainer  HPC-friendly containers
+```      
 
 ### Single-File Mode (Manual Walkthrough)
 You can run individual modules for debugging or point testing purposes. Using the sample data stored in the tests/ folder, you can manually step through the entire pipeline—from filtering raw reads to generating final comparative plots.
@@ -174,3 +282,12 @@ nextflow run main.nf plot --test_dir ./results_analyze/test_sample/test_sample_a
 ```
 
 
+## Citations
+If you use Sequenoscope in your research, please cite:
+
+Meknas, A., Bessonov, K., Eagle, S. H., Peterson, C. L., Robertson, J., Ricker, N., ... & Reimer, A. (2025). **Sequenoscope: A Modular Tool for Nanopore Adaptive Sequencing Analytics and Beyond.** *Access Microbiology*, 001059-v1. https://doi.org/10.1099/acmi.0.001059.v1
+
+
+## Contacts
+- **Kyrylo Bessonov**: kyrylo.bessonov@phac-aspc.gc.ca 
+- **Abdallah Meknas**: abdallahmeknas@gmail.com
