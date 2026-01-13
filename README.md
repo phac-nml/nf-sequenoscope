@@ -285,7 +285,7 @@ nextflow run main.nf plot --test_dir ./results_analyze/test_sample/test_sample_a
 ## Citations
 If you use Sequenoscope in your research, please cite:
 
-Meknas, A., Bessonov, K., Eagle, S. H., Peterson, C. L., Robertson, J., Ricker, N., ... & Reimer, A. (2025). **Sequenoscope: A Modular Tool for Nanopore Adaptive Sequencing Analytics and Beyond.** *Access Microbiology*, 001059-v1. https://doi.org/10.1099/acmi.0.001059.v1
+Meknas, A., Bessonov, K., Eagle, S. H., Peterson, C. L., Robertson, J., Ricker, N., ... & Reimer, A. (2025). **Sequenoscope: A Modular Tool for Nanopore Adaptive Sequencing Analytics and Beyond.** *Access Microbiology*, 001059-v2. https://doi.org/10.1099/acmi.0.001059.v2
 
 
 ## Contacts
